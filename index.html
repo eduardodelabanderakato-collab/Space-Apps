@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#05070f">
+<title>Ion Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070f; --panel:#0c1020; --line:#1b2340; --text:#e6ecff; --dim:#8a94b8;
+  --cyan:#22d3ee; --red:#fb7185; --gold:#fbbf24; --good:#34d399;
+  --font:'Inter',system-ui,sans-serif; --display:'Orbitron',var(--font);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden;overscroll-behavior:none}
+body{position:fixed;inset:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#bg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+.screen.active{display:flex}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.55) 100%)}
+
+/* Title */
+#title{justify-content:center;gap:18px;text-align:center}
+.logo{font-family:var(--display);font-weight:900;font-size:clamp(40px,10vw,76px);letter-spacing:.08em;line-height:1;background:linear-gradient(180deg,#fff 0%,var(--cyan) 55%,#0ea5e9 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 24px rgba(34,211,238,.45))}
+.tag{color:var(--dim);font-size:14px;letter-spacing:.3em;text-transform:uppercase}
+.btn{font-family:var(--display);font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:0;border-radius:14px;padding:16px 36px;font-size:16px;color:#02101a;background:linear-gradient(180deg,#67e8f9,#06b6d4);box-shadow:0 0 0 1px rgba(255,255,255,.15) inset,0 10px 30px rgba(6,182,212,.35);cursor:pointer;transition:transform .08s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:transparent;color:var(--cyan);box-shadow:0 0 0 1px rgba(34,211,238,.4) inset}
+.stat-row{display:flex;gap:28px;color:var(--dim);font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.stat-row b{display:block;color:var(--text);font-family:var(--display);font-size:20px;letter-spacing:.05em;margin-top:4px}
+
+/* Game HUD */
+#game{padding-top:max(10px,env(safe-area-inset-top));gap:8px}
+.hud{width:100%;max-width:520px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.hud .score{font-family:var(--font);font-weight:800;font-size:24px;letter-spacing:.02em}
+.hud .lvl{text-align:right;padding-right:52px;font-size:12px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.combo{font-family:var(--display);font-weight:900;font-size:14px;color:var(--gold);letter-spacing:.1em;opacity:0;transition:opacity .2s,transform .2s;transform:scale(.8)}
+.combo.on{opacity:1;transform:scale(1)}
+.combo.pop{animation:pop .25s ease-out}
+@keyframes pop{0%{transform:scale(1.5)}100%{transform:scale(1)}}
+.heat{width:100%;max-width:520px;height:10px;border-radius:99px;background:#121832;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.heat i{display:block;height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#f97316,#fbbf24,#22d3ee);transition:width .12s linear;transform-origin:left}
+.heat.low i{animation:pulse .5s infinite alternate}
+@keyframes pulse{from{filter:brightness(.8)}to{filter:brightness(1.5)}}
+.target{width:100%;max-width:520px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--line);border-radius:16px;padding:10px 14px;min-height:72px;display:flex;flex-direction:column;justify-content:center}
+.target .kind{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.target .prompt{font-family:var(--display);font-weight:700;font-size:clamp(20px,6vw,30px);letter-spacing:.04em;margin-top:4px}
+.target.boss{border-color:var(--red);box-shadow:0 0 30px rgba(251,113,133,.3)}
+.target.boss .kind{color:var(--red)}
+#stage{flex:1;width:100%;max-width:520px;position:relative;min-height:0}
+#reactor{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.actions{width:100%;max-width:520px;min-height:132px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.options{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{font-family:var(--font);font-weight:800;font-size:15px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 10px;cursor:pointer;transition:transform .08s,background .15s}
+.opt:active{transform:scale(.97)}
+.opt.charge{font-family:var(--display);font-size:24px;padding:14px}
+.opt.ok{background:#064e3b;border-color:var(--good)}
+.opt.bad{background:#4c0519;border-color:var(--red)}
+.hint{font-size:12px;color:var(--dim);letter-spacing:.15em;text-transform:uppercase}
+.shake{animation:shake .4s}
+@keyframes shake{10%,90%{transform:translate(-2px,0)}20%,80%{transform:translate(4px,0)}30%,50%,70%{transform:translate(-6px,0)}40%,60%{transform:translate(6px,0)}}
+.flash-red{animation:flashred .5s}
+@keyframes flashred{0%{box-shadow:inset 0 0 0 100vmax rgba(251,113,133,.35)}100%{box-shadow:none}}
+.mute{position:absolute;top:max(10px,env(safe-area-inset-top));right:14px;background:none;border:1px solid var(--line);color:var(--dim);border-radius:10px;padding:6px 10px;font-size:14px;cursor:pointer}
+
+/* Score */
+#score{justify-content:center;gap:14px;text-align:center}
+.big{font-family:var(--font);font-weight:900;font-size:clamp(48px,14vw,84px);line-height:1;color:#fff;text-shadow:0 0 30px rgba(34,211,238,.6)}
+.banner{font-family:var(--display);color:var(--gold);letter-spacing:.2em;text-transform:uppercase;font-size:14px;animation:pop .4s}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:12px;width:100%;max-width:360px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.card small{display:block;color:var(--dim);font-size:11px;letter-spacing:.15em;text-transform:uppercase}
+.card b{display:block;font-family:var(--display);font-size:22px;margin-top:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+/* Collection */
+#collection{gap:12px;overflow:auto}
+#collection h2{font-family:var(--display);letter-spacing:.2em;font-size:18px;margin:6px 0 0}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;width:100%;max-width:560px}
+.crystal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center}
+.crystal .gem{width:54px;height:54px;margin:0 auto 8px;clip-path:polygon(50% 0,100% 30%,80% 100%,20% 100%,0 30%);background:var(--c);opacity:.25;filter:grayscale(.8)}
+.crystal.clear .gem{opacity:.8;filter:none}
+.crystal.radiant .gem{opacity:1;filter:none;box-shadow:0 0 24px var(--c);animation:pulse 1.2s infinite alternate}
+.crystal .n{font-weight:800;font-size:13px}
+.crystal .f{font-family:var(--display);color:var(--dim);font-size:13px;margin-top:2px}
+.crystal .t{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:6px}
+@media (prefers-reduced-motion:reduce){.shake,.combo.pop,.banner{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="vignette"></div>
+
+<section id="title" class="screen active">
+  <div class="tag">Polyatomic reactor</div>
+  <div class="logo">ION<br>FORGE</div>
+  <div class="stat-row"><div>Best<b id="t-best">0</b></div><div>Rank<b id="t-rank">Lab Rat</b></div></div>
+  <button class="btn" id="play">Ignite</button>
+  <button class="btn ghost" id="to-collection">Collection</button>
+  <div class="tag" style="font-size:11px;letter-spacing:.15em;opacity:.7">Tap atoms into the core. Stabilize. Don't let the heat die.</div>
+</section>
+
+<section id="game" class="screen">
+  <div class="hud">
+    <div class="score" id="g-score">0</div>
+    <div class="combo" id="g-combo">×1</div>
+    <div class="lvl" id="g-lvl">Lab Rat</div>
+  </div>
+  <div class="heat" id="heat"><i></i></div>
+  <div class="target" id="target"><div class="kind" id="t-kind">Build</div><div class="prompt" id="t-prompt">Sulfate</div></div>
+  <div id="stage"><canvas id="reactor"></canvas></div>
+  <div class="actions" id="actions"></div>
+  <button class="mute" id="mute" title="Sound">🔊</button>
+</section>
+
+<section id="score" class="screen">
+  <div class="tag">Reactor cooled</div>
+  <div class="big" id="s-score">0</div>
+  <div class="banner" id="s-banner" style="display:none">Level up</div>
+  <div class="grid">
+    <div class="card"><small>Best</small><b id="s-best">0</b></div>
+    <div class="card"><small>Max combo</small><b id="s-combo">0</b></div>
+    <div class="card"><small>Accuracy</small><b id="s-acc">0%</b></div>
+    <div class="card"><small>XP gained</small><b id="s-xp">0</b></div>
+  </div>
+  <div class="row"><button class="btn" id="again">Again</button><button class="btn ghost" id="to-collection2">Collection</button></div>
+</section>
+
+<section id="collection" class="screen">
+  <h2>COLLECTION</h2>
+  <div class="tag" style="font-size:11px">Crystals brighten as you master each ion</div>
+  <div class="shelf" id="shelf"></div>
+  <button class="btn ghost" id="back">Back</button>
+</section>
+
+<script type="module">
+import {
+  IONS, CHARGES, formulaText, chargeLabel, formulaMatches, scoreFor, roundTypeFor, isBossRound,
+  difficultyFor, levelFor, crystalTier, Scheduler, nameOptions, spawnPlan,
+} from './game-logic.js';
+
+/* ---------- persistence ---------- */
+const KEY = 'ionforge.v1';
+const defaults = () => ({ weights: {}, hits: {}, misses: {}, bestScore: 0, xp: 0, runs: 0, muted: false });
+let save = defaults();
+try { const raw = localStorage.getItem(KEY); if (raw) save = { ...defaults(), ...JSON.parse(raw) }; } catch {}
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} };
+const scheduler = new Scheduler(save.weights);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- audio ---------- */
+let ac = null;
+function tone(freq, dur = 0.12, type = 'sine', gain = 0.18, when = 0) {
+  if (save.muted) return;
+  try {
+    ac ||= new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0, ac.currentTime + when);
+    g.gain.linearRampToValueAtTime(gain, ac.currentTime + when + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + when + dur);
+    o.connect(g).connect(ac.destination); o.start(ac.currentTime + when); o.stop(ac.currentTime + when + dur + 0.05);
+  } catch {}
+}
+const sfx = {
+  tap: () => tone(520, 0.06, 'triangle', 0.08),
+  eject: () => tone(300, 0.08, 'triangle', 0.08),
+  good: (combo) => { const b = 523 * Math.pow(1.06, Math.min(combo, 12)); tone(b, 0.12, 'sine', 0.2); tone(b * 1.5, 0.14, 'sine', 0.16, 0.08); tone(b * 2, 0.22, 'sine', 0.12, 0.16); },
+  bad: () => { tone(140, 0.3, 'sawtooth', 0.14); tone(95, 0.4, 'square', 0.08, 0.05); },
+  boss: () => { for (let i = 0; i < 3; i++) tone(220 - i * 30, 0.18, 'square', 0.1, i * 0.12); },
+  over: () => { tone(330, 0.3, 'sine', 0.15); tone(262, 0.4, 'sine', 0.15, 0.25); tone(196, 0.7, 'sine', 0.15, 0.5); },
+};
+const buzz = (p) => { try { navigator.vibrate && navigator.vibrate(p); } catch {} };
+
+/* ---------- screens ---------- */
+const $ = (s) => document.querySelector(s);
+const screens = { title: $('#title'), game: $('#game'), score: $('#score'), collection: $('#collection') };
+function show(name) { for (const k in screens) screens[k].classList.toggle('active', k === name); if (name === 'collection') renderShelf(); if (name === 'title') renderTitle(); }
+function renderTitle() { $('#t-best').textContent = save.bestScore; $('#t-rank').textContent = levelFor(save.xp).title; }
+function renderShelf() {
+  $('#shelf').innerHTML = IONS.map((i) => {
+    const t = crystalTier(save.hits[i.id] || 0, save.misses[i.id] || 0);
+    return `<div class="crystal ${t}" style="--c:${i.color}"><div class="gem"></div><div class="n">${i.name}</div><div class="f">${formulaText(i.atoms, i.charge)}</div><div class="t">${t}</div></div>`;
+  }).join('');
+}
+$('#play').onclick = () => { ac ||= null; startRun(); };
+$('#again').onclick = startRun;
+$('#to-collection').onclick = () => show('collection');
+$('#to-collection2').onclick = () => show('collection');
+$('#back').onclick = () => show('title');
+const muteBtn = $('#mute');
+const renderMute = () => { muteBtn.textContent = save.muted ? '🔇' : '🔊'; };
+muteBtn.onclick = () => { save.muted = !save.muted; persist(); renderMute(); };
+renderMute(); renderTitle();
+
+/* ---------- background ---------- */
+const bg = $('#bg'), bctx = bg.getContext('2d');
+const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.4 + .3, s: Math.random() * .4 + .1 }));
+function drawBg(t) {
+  const w = bg.width = innerWidth * devicePixelRatio, h = bg.height = innerHeight * devicePixelRatio;
+  bctx.clearRect(0, 0, w, h);
+  const g = bctx.createRadialGradient(w / 2, h * .45, 0, w / 2, h * .45, Math.max(w, h) * .7);
+  g.addColorStop(0, '#0b1230'); g.addColorStop(1, '#05070f');
+  bctx.fillStyle = g; bctx.fillRect(0, 0, w, h);
+  bctx.fillStyle = '#9fb4ff';
+  for (const s of stars) { bctx.globalAlpha = .25 + .35 * Math.sin(t * s.s + s.x * 20); bctx.beginPath(); bctx.arc(s.x * w, s.y * h, s.r * devicePixelRatio, 0, 7); bctx.fill(); }
+  bctx.globalAlpha = 1;
+}
+
+/* ---------- game state ---------- */
+const cv = $('#reactor'), ctx = cv.getContext('2d');
+const G = {
+  running: false, score: 0, combo: 0, maxCombo: 0, successes: 0, hits: 0, misses: 0,
+  heat: 1, drain: 14, round: null, ion: null, prevId: null, orbs: [], particles: [], shake: 0,
+  bossLeft: 0, locked: false, coreFlash: null, phase: 'play', // play | charge
+};
+let W = 0, H = 0, CX = 0, CY = 0, R = 0, CORE = 0;
+function resize() {
+  const r = cv.parentElement.getBoundingClientRect();
+  W = cv.width = Math.max(1, r.width * devicePixelRatio); H = cv.height = Math.max(1, r.height * devicePixelRatio);
+  CX = W / 2; CY = H / 2; R = Math.min(W, H) / 2 - 8 * devicePixelRatio; CORE = R * 0.36;
+  for (const o of G.orbs) clampOrb(o);
+}
+addEventListener('resize', resize);
+
+function startRun() {
+  Object.assign(G, { running: true, score: 0, combo: 0, maxCombo: 0, successes: 0, hits: 0, misses: 0, heat: 1, prevId: null, orbs: [], particles: [], shake: 0, bossLeft: 0, locked: false, coreFlash: null });
+  show('game'); resize(); updateHud(); nextRound();
+}
+
+function nextRound() {
+  const boss = G.bossLeft > 0 || isBossRound(G.successes) && !G.bossJustFired;
+  if (isBossRound(G.successes) && G.bossLeft === 0 && !G.bossJustFired) { G.bossLeft = 3; G.bossJustFired = true; sfx.boss(); buzz([40, 40, 40]); }
+  if (!isBossRound(G.successes)) G.bossJustFired = false;
+  const diff = difficultyFor(G.successes);
+  const type = G.bossLeft > 0 ? 'build' : roundTypeFor(G.successes);
+  G.round = { type, boss: G.bossLeft > 0, diff };
+  G.drain = diff.drainSeconds / ((type === 'charge' || G.round.boss) ? 1.5 : 1);
+  G.ion = scheduler.next(G.prevId); G.prevId = G.ion.id;
+  G.locked = false; G.phase = 'play'; G.coreFlash = null;
+  const target = $('#target'); target.classList.toggle('boss', G.round.boss);
+  const kind = G.round.boss ? `⚠ Boss ${4 - G.bossLeft}/3 · Build` : { build: 'Build it', identify: 'Name it', charge: 'Charge it' }[type];
+  $('#t-kind').textContent = kind;
+  if (type === 'build') { $('#t-prompt').textContent = G.ion.name; spawnOrbs(diff); setActions('build'); }
+  else if (type === 'identify') { $('#t-prompt').textContent = formulaText(G.ion.atoms, G.ion.charge); G.orbs = []; setActions('identify'); }
+  else { $('#t-prompt').textContent = `${G.ion.name} · ${formulaText(G.ion.atoms)}`; G.orbs = []; setActions('charge'); }
+}
+
+function spawnOrbs(diff) {
+  const plan = spawnPlan(G.ion, diff);
+  G.orbs = plan.map((sym, i) => {
+    const a = (i / plan.length) * Math.PI * 2 + Math.random() * .5, d = CORE + 30 * devicePixelRatio + Math.random() * (R - CORE - 60 * devicePixelRatio);
+    const sp = (0.5 + Math.random() * 0.5) * diff.speed * devicePixelRatio * 0.6;
+    return { sym, x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d, vx: Math.cos(a + 1.3) * sp, vy: Math.sin(a + 1.3) * sp, r: 20 * devicePixelRatio, inCore: false, tx: 0, ty: 0, born: performance.now() + i * 40 };
+  });
+}
+function clampOrb(o) {
+  if (o.inCore) return;
+  const dx = o.x - CX, dy = o.y - CY, d = Math.hypot(dx, dy), max = R - o.r, min = CORE + o.r;
+  if (d > max) { o.x = CX + dx / d * max; o.y = CY + dy / d * max; o.vx *= -0.9; o.vy *= -0.9; }
+  else if (d < min) { o.x = CX + dx / d * min; o.y = CY + dy / d * min; o.vx *= -0.9; o.vy *= -0.9; }
+}
+function layoutCore() {
+  const core = G.orbs.filter((o) => o.inCore), n = core.length;
+  core.forEach((o, i) => { if (n === 1) { o.tx = CX; o.ty = CY; return; } const a = (i / n) * Math.PI * 2 - Math.PI / 2, rr = CORE * 0.55; o.tx = CX + Math.cos(a) * rr; o.ty = CY + Math.sin(a) * rr; });
+}
+function builtAtoms() { const c = {}; for (const o of G.orbs) if (o.inCore) c[o.sym] = (c[o.sym] || 0) + 1; return c; }
+
+/* ---------- actions ---------- */
+const actions = $('#actions');
+function setActions(mode) {
+  actions.innerHTML = '';
+  if (mode === 'build') {
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Stabilize'; b.onclick = () => { if (G.locked) return; sfx.tap(); G.phase = 'charge'; setActions('chargepick'); };
+    actions.append(b); const h = document.createElement('div'); h.className = 'hint'; h.textContent = 'tap atoms → core · tap core atom to eject'; actions.append(h);
+  } else if (mode === 'chargepick' || mode === 'charge') {
+    const h = document.createElement('div'); h.className = 'hint'; h.textContent = 'pick the charge'; actions.append(h);
+    const grid = document.createElement('div'); grid.className = 'options';
+    for (const c of CHARGES) { const b = document.createElement('button'); b.className = 'opt charge'; b.textContent = chargeLabel(c); b.onclick = () => answerCharge(c, b); grid.append(b); }
+    actions.append(grid);
+  } else if (mode === 'identify') {
+    const grid = document.createElement('div'); grid.className = 'options';
+    for (const n of nameOptions(G.ion)) { const b = document.createElement('button'); b.className = 'opt'; b.textContent = n; b.onclick = () => answerName(n, b); grid.append(b); }
+    actions.append(grid);
+  }
+}
+function answerCharge(c, btn) {
+  if (G.locked) return;
+  const okFormula = G.round.type === 'charge' ? true : formulaMatches(builtAtoms(), G.ion);
+  resolve(okFormula && c === G.ion.charge, btn);
+}
+function answerName(n, btn) { if (G.locked) return; resolve(n === G.ion.name, btn); }
+
+function resolve(ok, btn) {
+  G.locked = true;
+  scheduler.record(G.ion.id, ok); save.weights = scheduler.weights;
+  if (ok) {
+    G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo); G.hits++;
+    save.hits[G.ion.id] = (save.hits[G.ion.id] || 0) + 1;
+    G.score += scoreFor(G.round.type, G.combo - 1, G.round.boss);
+    G.heat = Math.min(1, G.heat + 0.25);
+    btn && btn.classList.add('ok');
+    burst(G.ion.color, reduced ? 20 : 70); sfx.good(G.combo); buzz(20);
+    G.coreFlash = { text: formulaText(G.ion.atoms, G.ion.charge), name: G.ion.name, color: G.ion.color, until: performance.now() + 900, good: true };
+    $('#g-combo').classList.add('pop'); setTimeout(() => $('#g-combo').classList.remove('pop'), 250);
+    G.successes++; if (G.bossLeft > 0) G.bossLeft--;
+    persist(); updateHud();
+    setTimeout(() => G.running && nextRound(), 900);
+  } else {
+    G.combo = 0; G.misses++;
+    save.misses[G.ion.id] = (save.misses[G.ion.id] || 0) + 1;
+    btn && btn.classList.add('bad');
+    if (!reduced) { G.shake = 14; screens.game.classList.add('shake'); setTimeout(() => screens.game.classList.remove('shake'), 400); }
+    screens.game.classList.add('flash-red'); setTimeout(() => screens.game.classList.remove('flash-red'), 500);
+    sfx.bad(); buzz([60, 30, 60]);
+    G.coreFlash = { text: formulaText(G.ion.atoms, G.ion.charge), name: G.ion.name, color: '#fb7185', until: performance.now() + 2000, good: false };
+    for (const o of G.orbs) o.inCore = false;
+    if (G.bossLeft > 0) G.bossLeft--;
+    persist(); updateHud();
+    setTimeout(() => G.running && nextRound(), 2000);
+  }
+}
+function updateHud() {
+  $('#g-score').textContent = G.score;
+  const c = $('#g-combo'); c.textContent = '×' + (1 + 0.25 * Math.max(0, G.combo - 1)).toFixed(2).replace(/\.?0+$/, '') + (G.combo > 1 ? ` · ${G.combo} combo` : ''); c.classList.toggle('on', G.combo > 1);
+  $('#g-lvl').textContent = levelFor(save.xp).title;
+}
+function endRun() {
+  G.running = false; sfx.over(); buzz([80, 40, 120]);
+  const before = levelFor(save.xp).level, gained = Math.round(G.score / 10);
+  save.xp += gained; save.runs++; save.bestScore = Math.max(save.bestScore, G.score); persist();
+  $('#s-score').textContent = G.score; $('#s-best').textContent = save.bestScore; $('#s-combo').textContent = G.maxCombo;
+  const total = G.hits + G.misses; $('#s-acc').textContent = (total ? Math.round(G.hits / total * 100) : 0) + '%'; $('#s-xp').textContent = '+' + gained;
+  const lv = levelFor(save.xp); $('#s-banner').style.display = lv.level > before ? '' : 'none'; $('#s-banner').textContent = `Level up · ${lv.title}`;
+  show('score');
+}
+
+/* ---------- input ---------- */
+cv.addEventListener('pointerdown', (e) => {
+  if (!G.running || G.locked || G.round.type !== 'build' || G.phase !== 'play') return;
+  const rect = cv.getBoundingClientRect(), x = (e.clientX - rect.left) * devicePixelRatio, y = (e.clientY - rect.top) * devicePixelRatio;
+  let best = null, bd = Infinity;
+  for (const o of G.orbs) { const d = Math.hypot(o.x - x, o.y - y); if (d < o.r * 1.6 && d < bd) { bd = d; best = o; } }
+  if (!best) return;
+  if (best.inCore) { best.inCore = false; const a = Math.random() * 7; best.vx = Math.cos(a) * 3 * devicePixelRatio; best.vy = Math.sin(a) * 3 * devicePixelRatio; best.x = CX + Math.cos(a) * (CORE + best.r + 2); best.y = CY + Math.sin(a) * (CORE + best.r + 2); sfx.eject(); }
+  else { best.inCore = true; sfx.tap(); buzz(8); spark(best.x, best.y, '#67e8f9', 8); }
+  layoutCore();
+});
+
+/* ---------- particles ---------- */
+function spark(x, y, color, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, s = (1 + Math.random() * 3) * devicePixelRatio; G.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color, r: (1 + Math.random() * 2) * devicePixelRatio }); } }
+function burst(color, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 7, s = (2 + Math.random() * 6) * devicePixelRatio; G.particles.push({ x: CX, y: CY, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color, r: (1.5 + Math.random() * 3) * devicePixelRatio }); } }
+
+/* ---------- render loop ---------- */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; const t = now / 1000;
+  drawBg(t);
+  if (!screens.game.classList.contains('active')) return;
+  if (G.running && !G.locked) { G.heat -= dt / G.drain; if (G.heat <= 0) { G.heat = 0; endRun(); return; } }
+  const heat = $('#heat'); heat.firstElementChild.style.width = (G.heat * 100) + '%'; heat.classList.toggle('low', G.heat < 0.3);
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  if (G.shake > 0) { ctx.translate((Math.random() - .5) * G.shake, (Math.random() - .5) * G.shake); G.shake *= 0.85; if (G.shake < .5) G.shake = 0; }
+  const dpr = devicePixelRatio, boss = G.round && G.round.boss, coreColor = boss ? '#fb7185' : '#22d3ee';
+  // reactor ring
+  ctx.strokeStyle = 'rgba(80,100,160,.25)'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.stroke();
+  ctx.setLineDash([6 * dpr, 10 * dpr]); ctx.strokeStyle = 'rgba(34,211,238,.25)'; ctx.lineDashOffset = -t * 30 * dpr; ctx.beginPath(); ctx.arc(CX, CY, R - 8 * dpr, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  // core glow
+  const pulse = 1 + Math.sin(t * (boss ? 8 : 3)) * 0.04;
+  const g = ctx.createRadialGradient(CX, CY, 0, CX, CY, CORE * 1.6 * pulse);
+  g.addColorStop(0, boss ? 'rgba(251,113,133,.55)' : 'rgba(34,211,238,.45)'); g.addColorStop(0.5, boss ? 'rgba(251,113,133,.12)' : 'rgba(34,211,238,.10)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, CORE * 1.6 * pulse, 0, 7); ctx.fill();
+  ctx.strokeStyle = coreColor; ctx.lineWidth = 1.5 * dpr; ctx.globalAlpha = .7; ctx.beginPath(); ctx.arc(CX, CY, CORE * pulse, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  // orbs
+  for (const o of G.orbs) {
+    if (now < o.born) continue;
+    if (o.inCore && G.coreFlash && now < G.coreFlash.until) continue;
+    if (o.inCore) { o.x += (o.tx - o.x) * 0.18; o.y += (o.ty - o.y) * 0.18; }
+    else { o.x += o.vx * dt * 60; o.y += o.vy * dt * 60; o.vx += (Math.random() - .5) * .05 * dpr; o.vy += (Math.random() - .5) * .05 * dpr; clampOrb(o); }
+    const col = { N: '#60a5fa', H: '#f8fafc', O: '#f87171', C: '#9ca3af', S: '#facc15', P: '#fb923c' }[o.sym];
+    const gl = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * 2); gl.addColorStop(0, col + '66'); gl.addColorStop(1, col + '00');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 2, 0, 7); ctx.fill();
+    ctx.fillStyle = o.inCore ? col : '#0c1020'; ctx.strokeStyle = col; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = o.inCore ? '#05070f' : col; ctx.font = `800 ${o.r * 1.1}px Inter, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(o.sym, o.x, o.y + 1);
+  }
+  // built formula / flash
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (G.coreFlash && now < G.coreFlash.until) {
+    const f = G.coreFlash; ctx.fillStyle = 'rgba(5,7,15,.75)'; ctx.beginPath(); ctx.arc(CX, CY, CORE * 1.05, 0, 7); ctx.fill();
+    ctx.fillStyle = f.color; ctx.shadowColor = f.color; ctx.shadowBlur = 20 * dpr;
+    ctx.font = `700 ${CORE * 0.42}px Orbitron, sans-serif`; ctx.fillText(f.text, CX, CY - CORE * 0.12);
+    ctx.font = `600 ${CORE * 0.2}px Inter, sans-serif`; ctx.fillText(f.good ? 'STABLE' : f.name, CX, CY + CORE * 0.3); ctx.shadowBlur = 0;
+  } else if (G.round && G.round.type === 'build') {
+    const b = builtAtoms(), has = Object.keys(b).length;
+    ctx.fillStyle = has ? '#e6ecff' : 'rgba(230,236,255,.35)'; ctx.font = `700 ${CORE * 0.28}px Orbitron, sans-serif`;
+    ctx.fillText(has ? formulaText(b) : '— empty —', CX, CY + CORE * 1.3);
+  }
+  // particles
+  for (let i = G.particles.length - 1; i >= 0; i--) { const p = G.particles[i]; p.x += p.vx; p.y += p.vy; p.vx *= .96; p.vy *= .96; p.life -= dt * 1.4; if (p.life <= 0) { G.particles.splice(i, 1); continue; } ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * p.life, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1; ctx.restore();
+}
+resize(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
